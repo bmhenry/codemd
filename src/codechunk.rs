@@ -13,20 +13,20 @@
 #![allow(unused)]
 
 use color_eyre::eyre::Result;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 
 
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum CodeMeta {
     /// Add the chunk as a diff, replacing the given set of lines with the lines in the chunk
+    #[serde(alias = "diff")]
     Diff(CodeDiff),
     /// Insert the chunk into the existing file starting on the given line
+    #[serde(alias = "insert")]
     Insert(CodeInsert),
-    // This one NEEDS to go at the end, so that serde attempts to deserialize Diff and Insert
-    // first. Append has no unique attributes, so it'll always be picked
     /// Simply add this chunk to the end of the file
+    #[serde(alias = "append")]
     Append(CodeAppend),
 }
 
@@ -37,7 +37,7 @@ impl CodeMeta {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CodeAppend {
     /// A filename, allowing multiple code files to be modified within the same markdown doc
     pub file: Option<String>,
@@ -46,7 +46,7 @@ pub struct CodeAppend {
     pub removals: Vec<CodeRemove>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CodeInsert {
     /// A filename, allowing multiple code files to be modified within the same markdown doc
     pub file: Option<String>,
@@ -58,7 +58,7 @@ pub struct CodeInsert {
     pub removals: Vec<CodeRemove>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CodeDiff {
     /// A filename, allowing multiple code files to be modified within the same markdown doc
     pub file: Option<String>,
@@ -72,7 +72,7 @@ pub struct CodeDiff {
 }
 
 /// Allows simply deleting code without requiring a chunk to replace it with
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CodeRemove {
     // /// A filename, allowing multiple code files to be modified within the same markdown doc
     // file: Option<String>,
@@ -127,13 +127,25 @@ mod tests {
         assert!(rem.first == 10 && rem.last == 20);
     }
 
+    //#[test]
+    //fn deser_ser_print() {
+    //    let diff = CodeMeta::Diff(CodeDiff {
+    //        file: Some("filename".to_string()),
+    //        first: 10,
+    //        last: 20,
+    //        removals: vec!(CodeRemove { first: 24, last: 27 }, CodeRemove { first: 30, last: 31 })
+    //    });
+    //    println!("DIFF:: {}", serde_json::to_string(&diff).unwrap());
+    //}
+
     #[test]
     fn deser_diff() {
         let diff_meta = "{ \"first\": 10, \"last\": 20, \"removals\": [{ \"first\": 24, \"last\": 27 }, { \"first\": 30, \"last\": 31 }] }";
         let d: CodeDiff = serde_json::from_str(diff_meta).unwrap();
         assert!(d.first == 10 && d.removals[0].first == 24 && d.removals[1].last == 31);
 
-        let cm: CodeMeta = serde_json::from_str(diff_meta).unwrap();
+        let cm_diff_meta = format!("{{ \"diff\": {} }}", diff_meta);
+        let cm: CodeMeta = serde_json::from_str(&cm_diff_meta).unwrap();
         assert!(match cm {
             CodeMeta::Diff(d) => d.first == 10 && d.removals[0].first == 24 && d.removals[1].last == 31,
             _ => false

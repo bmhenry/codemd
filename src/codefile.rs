@@ -36,7 +36,6 @@ impl CodeFile {
             if cfs.contains_key(&block.file) {
                 cfs.get_mut(&block.file).unwrap().add(block)?;
             } else {
-                println!("Creating new file: {:?}", block.file);
                 cfs.insert(block.file.clone(), CodeFile::new(block));
             }
         }
@@ -127,7 +126,7 @@ mod tests {
         let mut cf = CodeFile::new(&cb0);
         cf.add(&cb1).unwrap();
 
-        println!("{:#?}", cf);
+        //println!("{:#?}", cf);
 
         assert!(cf.lines.len() == 4);
     }
