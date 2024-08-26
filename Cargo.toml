@@ -1,0 +1,12 @@
+[package]
+name = "codemd"
+version = "0.1.0"
+edition = "2021"
+authors = ["Brandon Henry <brandon@bhenry.dev>"]
+
+[dependencies]
+argh = "0.1.12"
+color-eyre = "0.6.3"
+regex = "1.10.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
