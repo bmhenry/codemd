@@ -12,7 +12,8 @@ pub fn find_codeblocks(lines: &Vec<String>) -> Result<Vec<CodeChunk>> {
     let mut chunks = vec!();
 
     // regex for opening code block
-    let opener = Regex::new(r#"^ *```[ \t]*(\w+)[ \t]*(\{[\w \t='":,.\-_{}]*\})"#).unwrap();
+    // Character class includes \[\] to support array syntax in JSON metadata (e.g., "removals": [...])
+    let opener = Regex::new(r#"^ *```[ \t]*(\w+)[ \t]*(\{[\w \t='":,.\-_\[\]{}]*\})"#).unwrap();
     let closer = Regex::new(r"^ *```").unwrap();
 
     let mut block: Option<CodeChunk> = None;
@@ -57,6 +58,31 @@ mod tests {
             CodeMeta::Diff(d) => d.first == 10 && d.last == 20,
             _ => false
         });
+    }
+
+    #[test]
+    fn parse_codeblock_with_removals_array() {
+        // Test that the regex correctly captures JSON with array syntax
+        let code = "```rust { \"append\": { \"file\": \"test.rs\", \"removals\": [{ \"first\": 5, \"last\": 7 }, { \"first\": 10, \"last\": 12 }] } }\n\
+                    fn main() {}\n\
+                    ```";
+        let lines = code.lines().map(str::to_string).collect::<Vec<String>>();
+        let blocks_r = find_codeblocks(&lines);
+        assert!(blocks_r.is_ok(), "Failed to parse code block with removals array");
+        let blocks = blocks_r.unwrap();
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(blocks[0].lang, "rust");
+        match &blocks[0].meta {
+            CodeMeta::Append(a) => {
+                assert_eq!(a.file, Some("test.rs".to_string()));
+                assert_eq!(a.removals.len(), 2);
+                assert_eq!(a.removals[0].first, 5);
+                assert_eq!(a.removals[0].last, 7);
+                assert_eq!(a.removals[1].first, 10);
+                assert_eq!(a.removals[1].last, 12);
+            },
+            _ => panic!("Expected Append variant")
+        }
     }
 }
 
